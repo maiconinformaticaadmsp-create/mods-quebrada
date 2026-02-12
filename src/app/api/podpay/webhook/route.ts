@@ -17,7 +17,7 @@ type PaymentInsert = {
 
 async function savePayment(data: PaymentInsert) {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    return { error: "Supabase não configurado" };
+    return { error: "Supabase nao configurado" };
   }
 
   const response = await fetch(`${SUPABASE_URL}/rest/v1/payments`, {
@@ -40,7 +40,8 @@ async function savePayment(data: PaymentInsert) {
 }
 
 export async function POST(request: Request) {
-  const signature = request.headers.get("x-podpay-signature") || "";
+  const signatureHeader = request.headers.get("x-podpay-signature") || "";
+  const signature = signatureHeader.replace(/^sha256=/i, "").trim();
   const rawBody = await request.text();
 
   if (WEBHOOK_SECRET) {
@@ -48,10 +49,11 @@ export async function POST(request: Request) {
     const hex = hmac.digest("hex");
     const base64 = Buffer.from(hex, "hex").toString("base64");
 
-    const valid = signature === hex || signature === base64;
+    const valid =
+      signature.toLowerCase() === hex.toLowerCase() || signature === base64;
     if (!valid) {
       return NextResponse.json(
-        { success: false, error: "Assinatura inválida" },
+        { success: false, error: "Assinatura invalida" },
         { status: 401 }
       );
     }
@@ -66,7 +68,14 @@ export async function POST(request: Request) {
 
   const data = payload?.data || payload?.transaction || payload;
   const txId =
-    data?.id || data?.txId || data?.transactionId || data?.paymentId || "";
+    data?.id ||
+    data?.txId ||
+    data?.transactionId ||
+    data?.paymentId ||
+    data?.transaction?.id ||
+    data?.payment?.id ||
+    payload?.id ||
+    "";
 
   if (txId) {
     const status = data?.status || payload?.status || payload?.event || null;
