@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { SiteHeader } from "@/components/site-header";
@@ -184,12 +183,21 @@ export function CheckoutClient() {
               <div className="mt-8 space-y-6 rounded-3xl border border-white/10 bg-white/5 p-6">
                 <div className="text-sm text-white/60">Pagamento PIX</div>
                 <div className="relative mx-auto h-56 w-56 overflow-hidden rounded-2xl bg-black/40">
-                  <Image
-                    src={pix.pixQrCodeImage}
-                    alt="QR Code PIX"
-                    fill
-                    className="object-contain"
-                  />
+                  {(() => {
+                    const raw = pix.pixQrCodeImage || "";
+                    const src =
+                      raw.startsWith("data:") || raw.startsWith("http")
+                        ? raw
+                        : `data:image/png;base64,${raw}`;
+                    return (
+                      // Usar img normal para evitar bloqueio do next/image
+                      <img
+                        src={src}
+                        alt="QR Code PIX"
+                        className="h-full w-full object-contain"
+                      />
+                    );
+                  })()}
                 </div>
                 <div className="space-y-3">
                   <p className="text-xs uppercase tracking-[0.3em] text-white/50">
