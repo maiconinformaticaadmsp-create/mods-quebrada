@@ -1,3 +1,6 @@
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import crypto from "crypto";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { formatPrice, products } from "@/lib/products";
@@ -81,6 +84,18 @@ export default async function AdminPage({
 }: {
   searchParams?: { status?: string };
 }) {
+  const ADMIN_USER = process.env.ADMIN_USER || "";
+  const ADMIN_PASS = process.env.ADMIN_PASS || "";
+  const expected = crypto
+    .createHash("sha256")
+    .update(`${ADMIN_USER}:${ADMIN_PASS}`)
+    .digest("hex");
+  const auth = cookies().get("admin_auth")?.value;
+
+  if (!auth || auth !== expected) {
+    redirect("/admin/login");
+  }
+
   const statusFilter = searchParams?.status?.toLowerCase() || "all";
   const payments = await getPayments(statusFilter);
   const monthlyTotal = await getMonthlyTotal();
