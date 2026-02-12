@@ -35,6 +35,7 @@ export function CheckoutClient() {
   const [pix, setPix] = useState<PixResponse["data"] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   const priceInCents = product ? Math.round(product.price * 100) : 0;
 
@@ -109,6 +110,7 @@ export function CheckoutClient() {
       }
 
       setPix(data.data);
+      setImgError(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao gerar PIX");
     } finally {
@@ -202,18 +204,22 @@ export function CheckoutClient() {
                     const raw = pix.pixQrCodeImage || "";
                     const trimmed = raw.trim();
                     const cleaned = trimmed.replace(/\s/g, "");
+                    let format = "desconhecido";
 
                     if (trimmed.startsWith("data:") || trimmed.startsWith("http")) {
+                      format = trimmed.startsWith("http") ? "url" : "data";
                       return (
                         <img
                           src={trimmed}
                           alt="QR Code PIX"
                           className="h-full w-full object-contain"
+                          onError={() => setImgError(true)}
                         />
                       );
                     }
 
                     if (trimmed.startsWith("<svg")) {
+                      format = "svg";
                       const svgSrc = `data:image/svg+xml;utf8,${encodeURIComponent(
                         trimmed
                       )}`;
@@ -222,11 +228,13 @@ export function CheckoutClient() {
                           src={svgSrc}
                           alt="QR Code PIX"
                           className="h-full w-full object-contain"
+                          onError={() => setImgError(true)}
                         />
                       );
                     }
 
                     const isSvgBase64 = cleaned.startsWith("PHN2Zy");
+                    format = isSvgBase64 ? "svg-base64" : "png-base64";
                     const src = isSvgBase64
                       ? `data:image/svg+xml;base64,${cleaned}`
                       : `data:image/png;base64,${cleaned}`;
@@ -237,9 +245,45 @@ export function CheckoutClient() {
                         src={src}
                         alt="QR Code PIX"
                         className="h-full w-full object-contain"
+                        onError={() => setImgError(true)}
                       />
                     );
                   })()}
+                </div>
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const raw = pix.pixQrCodeImage || "";
+                      const trimmed = raw.trim();
+                      const cleaned = trimmed.replace(/\s/g, "");
+                      let src = trimmed;
+                      if (
+                        !trimmed.startsWith("data:") &&
+                        !trimmed.startsWith("http")
+                      ) {
+                        if (trimmed.startsWith("<svg")) {
+                          src = `data:image/svg+xml;utf8,${encodeURIComponent(
+                            trimmed
+                          )}`;
+                        } else if (cleaned.startsWith("PHN2Zy")) {
+                          src = `data:image/svg+xml;base64,${cleaned}`;
+                        } else {
+                          src = `data:image/png;base64,${cleaned}`;
+                        }
+                      }
+                      window.open(src, "_blank");
+                    }}
+                    className="w-full rounded-full border border-white/20 px-4 py-2 text-xs uppercase tracking-[0.3em] text-white/80"
+                  >
+                    Abrir QR em nova aba
+                  </button>
+                  {imgError && (
+                    <p className="text-xs text-red-300">
+                      Não foi possível carregar o QR Code. Use “Abrir QR em nova
+                      aba”.
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-3">
                   <p className="text-xs uppercase tracking-[0.3em] text-white/50">
