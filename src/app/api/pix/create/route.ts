@@ -1,7 +1,10 @@
 ﻿import { NextResponse } from "next/server";
 import crypto from "crypto";
 
-const PODPAY_BASE_URL = process.env.PODPAY_BASE_URL || "https://api.podpay.app";
+const PODPAY_BASE_URL =
+  process.env.PODPAY_BASE_URL ||
+  process.env.URL_BASE_PODPAY ||
+  "https://api.podpay.app";
 const PODPAY_SECRET_KEY = process.env.PODPAY_SECRET_KEY || "";
 
 export async function POST(request: Request) {
