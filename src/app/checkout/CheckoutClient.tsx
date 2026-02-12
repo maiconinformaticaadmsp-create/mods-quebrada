@@ -185,10 +185,11 @@ export function CheckoutClient() {
                 <div className="relative mx-auto h-56 w-56 overflow-hidden rounded-2xl bg-black/40">
                   {(() => {
                     const raw = pix.pixQrCodeImage || "";
+                    const cleaned = raw.replace(/\s/g, "");
                     const src =
-                      raw.startsWith("data:") || raw.startsWith("http")
-                        ? raw
-                        : `data:image/png;base64,${raw}`;
+                      cleaned.startsWith("data:") || cleaned.startsWith("http")
+                        ? cleaned
+                        : `data:image/png;base64,${cleaned}`;
                     return (
                       // Usar img normal para evitar bloqueio do next/image
                       <img
