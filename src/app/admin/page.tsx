@@ -13,14 +13,24 @@ type PaymentRow = {
   created_at: string;
 };
 
-async function getPayments(): Promise<PaymentRow[]> {
+async function getPayments(statusFilter?: string): Promise<PaymentRow[]> {
   const SUPABASE_URL = process.env.SUPABASE_URL || "";
   const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return [];
 
+  const params = new URLSearchParams({
+    select: "*",
+    order: "created_at.desc",
+    limit: "50",
+  });
+
+  if (statusFilter && statusFilter !== "all") {
+    params.set("status", `eq.${statusFilter}`);
+  }
+
   const response = await fetch(
-    `${SUPABASE_URL}/rest/v1/payments?select=*&order=created_at.desc&limit=50`,
+    `${SUPABASE_URL}/rest/v1/payments?${params.toString()}`,
     {
       headers: {
         apikey: SUPABASE_SERVICE_ROLE_KEY,
@@ -34,8 +44,46 @@ async function getPayments(): Promise<PaymentRow[]> {
   return response.json();
 }
 
-export default async function AdminPage() {
-  const payments = await getPayments();
+async function getMonthlyTotal(): Promise<number> {
+  const SUPABASE_URL = process.env.SUPABASE_URL || "";
+  const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return 0;
+
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1);
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+  const params = new URLSearchParams({
+    select: "amount",
+    created_at: `gte.${start.toISOString()}`,
+  });
+  params.append("created_at", `lt.${end.toISOString()}`);
+
+  const response = await fetch(
+    `${SUPABASE_URL}/rest/v1/payments?${params.toString()}`,
+    {
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+      cache: "no-store",
+    }
+  );
+
+  if (!response.ok) return 0;
+  const rows = (await response.json()) as { amount: number | null }[];
+  return rows.reduce((sum, row) => sum + (row.amount || 0), 0);
+}
+
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams?: { status?: string };
+}) {
+  const statusFilter = searchParams?.status?.toLowerCase() || "all";
+  const payments = await getPayments(statusFilter);
+  const monthlyTotal = await getMonthlyTotal();
 
   return (
     <div className="bg-grid">
@@ -70,9 +118,11 @@ export default async function AdminPage() {
           </div>
           <div className="rounded-[28px] border border-white/10 bg-black/60 p-6">
             <p className="text-xs uppercase tracking-[0.3em] text-white/50">
-              Entrega
+              Recebido no mês
             </p>
-            <p className="mt-4 text-3xl font-semibold text-white">WhatsApp</p>
+            <p className="mt-4 text-3xl font-semibold text-white">
+              {formatPrice(monthlyTotal / 100)}
+            </p>
           </div>
         </section>
 
@@ -81,11 +131,35 @@ export default async function AdminPage() {
             <h2 className="text-2xl font-semibold text-white">
               Pagamentos recentes
             </h2>
+            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-white/60">
+              <span>Filtro:</span>
+              <div className="flex items-center gap-2">
+                {[
+                  { label: "Todos", value: "all" },
+                  { label: "Pago", value: "paid" },
+                  { label: "Pendente", value: "pending" },
+                  { label: "Falhou", value: "failed" },
+                ].map((item) => (
+                  <a
+                    key={item.value}
+                    href={`/admin?status=${item.value}`}
+                    className={`rounded-full border px-3 py-1 text-[10px] ${
+                      statusFilter === item.value
+                        ? "border-brand/40 bg-brand/10 text-brand"
+                        : "border-white/20 text-white/70"
+                    }`}
+                  >
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+            </div>
           </div>
           <div className="mt-6 overflow-hidden rounded-3xl border border-white/10">
             <table className="w-full text-left text-sm text-white/70">
               <thead className="bg-black/60 text-xs uppercase tracking-[0.3em] text-white/50">
                 <tr>
+                  <th className="px-4 py-3">Transação</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Valor</th>
                   <th className="px-4 py-3">Cliente</th>
@@ -96,13 +170,16 @@ export default async function AdminPage() {
               <tbody>
                 {payments.length === 0 ? (
                   <tr className="border-t border-white/10">
-                    <td className="px-4 py-4" colSpan={5}>
+                    <td className="px-4 py-4" colSpan={6}>
                       Nenhum pagamento registrado ainda.
                     </td>
                   </tr>
                 ) : (
                   payments.map((payment) => (
                     <tr key={payment.id} className="border-t border-white/10">
+                      <td className="px-4 py-4 text-xs text-white/70">
+                        {payment.tx_id}
+                      </td>
                       <td className="px-4 py-4">
                         <span className="rounded-full border border-brand/40 bg-brand/10 px-3 py-1 text-xs text-brand">
                           {payment.status || "desconhecido"}
@@ -117,7 +194,21 @@ export default async function AdminPage() {
                         {payment.customer_name || payment.customer_email || "-"}
                       </td>
                       <td className="px-4 py-4">
-                        {payment.customer_phone || "-"}
+                        {payment.customer_phone ? (
+                          <a
+                            href={`https://wa.me/${payment.customer_phone.replace(
+                              /\D/g,
+                              ""
+                            )}`}
+                            className="text-brand"
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {payment.customer_phone}
+                          </a>
+                        ) : (
+                          "-"
+                        )}
                       </td>
                       <td className="px-4 py-4 text-xs text-white/60">
                         {new Date(payment.created_at).toLocaleString("pt-BR")}
