@@ -1,14 +1,106 @@
-﻿import Link from "next/link";
+﻿"use client";
+
+import { useMemo, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
-import { formatPrice, getProductBySlug, products } from "@/lib/products";
+import { formatPrice, products } from "@/lib/products";
 
-type CheckoutPageProps = {
-  searchParams?: { produto?: string };
+type PixResponse = {
+  success: boolean;
+  data?: {
+    id: string;
+    status: string;
+    amount: number;
+    pixQrCode: string;
+    pixQrCodeImage: string;
+  };
+  error?: { message?: string } | string;
 };
 
-export default function CheckoutPage({ searchParams }: CheckoutPageProps) {
-  const product = getProductBySlug(searchParams?.produto);
+export default function CheckoutPage() {
+  const searchParams = useSearchParams();
+  const slug = searchParams.get("produto") || undefined;
+  const product = useMemo(
+    () => products.find((item) => item.slug === slug),
+    [slug]
+  );
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [cpf, setCpf] = useState("");
+  const [phone, setPhone] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [pix, setPix] = useState<PixResponse["data"] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const priceInCents = product ? Math.round(product.price * 100) : 0;
+
+  const handleCopy = async () => {
+    if (!pix?.pixQrCode) return;
+    await navigator.clipboard.writeText(pix.pixQrCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError(null);
+
+    if (!product) {
+      setError("Selecione um produto antes de continuar.");
+      return;
+    }
+
+    setLoading(true);
+    setPix(null);
+
+    const payload = {
+      paymentMethod: "pix",
+      amount: priceInCents,
+      customer: {
+        document: { type: "cpf", number: cpf.replace(/\D/g, "") },
+        name,
+        email,
+        phone: phone.replace(/\D/g, ""),
+      },
+      items: [
+        {
+          title: product.name,
+          unitPrice: priceInCents,
+          quantity: 1,
+          tangible: false,
+        },
+      ],
+    };
+
+    try {
+      const response = await fetch("/api/pix/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = (await response.json()) as PixResponse;
+
+      if (!response.ok || !data.success || !data.data) {
+        throw new Error(
+          typeof data.error === "string"
+            ? data.error
+            : data.error?.message || "Erro ao gerar PIX"
+        );
+      }
+
+      setPix(data.data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao gerar PIX");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="bg-grid">
@@ -22,40 +114,103 @@ export default function CheckoutPage({ searchParams }: CheckoutPageProps) {
             Finalize sua compra com PIX
           </h1>
           <p className="mt-3 text-white/60">
-            Informe seu WhatsApp para receber o mod após a confirmação do pagamento.
+            Preencha seus dados para gerar o QR Code e o copia e cola.
           </p>
         </div>
 
         <div className="mt-10 grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
           <section className="rounded-[32px] border border-white/10 bg-black/60 p-8">
             <h2 className="text-2xl font-semibold text-white">Seus dados</h2>
-            <form className="mt-6 space-y-5">
+            <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
+              <label className="block text-sm text-white/70">
+                Nome completo
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white placeholder:text-white/40 focus:border-brand focus:outline-none"
+                />
+              </label>
+              <label className="block text-sm text-white/70">
+                Email
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white placeholder:text-white/40 focus:border-brand focus:outline-none"
+                />
+              </label>
+              <label className="block text-sm text-white/70">
+                CPF
+                <input
+                  type="text"
+                  value={cpf}
+                  onChange={(e) => setCpf(e.target.value)}
+                  required
+                  placeholder="Somente números"
+                  className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white placeholder:text-white/40 focus:border-brand focus:outline-none"
+                />
+              </label>
               <label className="block text-sm text-white/70">
                 WhatsApp
                 <input
                   type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required
                   placeholder="(11) 90000-0000"
                   className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white placeholder:text-white/40 focus:border-brand focus:outline-none"
                 />
               </label>
-              <label className="block text-sm text-white/70">
-                Observações (opcional)
-                <textarea
-                  placeholder="Ex: servidor, configuração desejada..."
-                  className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white placeholder:text-white/40 focus:border-brand focus:outline-none"
-                  rows={4}
-                />
-              </label>
+
               <button
-                type="button"
-                className="w-full rounded-full bg-brand px-6 py-3 text-xs uppercase tracking-[0.35em] text-black"
+                type="submit"
+                disabled={loading}
+                className="w-full rounded-full bg-brand px-6 py-3 text-xs uppercase tracking-[0.35em] text-black disabled:opacity-60"
               >
-                Pagar com PIX
+                {loading ? "Gerando PIX..." : "Gerar PIX"}
               </button>
-              <p className="text-xs text-white/50">
-                Integração com PIX será ativada após configurarmos a API.
-              </p>
+
+              {error && (
+                <p className="rounded-2xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200">
+                  {error}
+                </p>
+              )}
             </form>
+
+            {pix && (
+              <div className="mt-8 space-y-6 rounded-3xl border border-white/10 bg-white/5 p-6">
+                <div className="text-sm text-white/60">Pagamento PIX</div>
+                <div className="relative mx-auto h-56 w-56 overflow-hidden rounded-2xl bg-black/40">
+                  <Image
+                    src={pix.pixQrCodeImage}
+                    alt="QR Code PIX"
+                    fill
+                    className="object-contain"
+                  />
+                </div>
+                <div className="space-y-3">
+                  <p className="text-xs uppercase tracking-[0.3em] text-white/50">
+                    Copia e cola
+                  </p>
+                  <textarea
+                    readOnly
+                    value={pix.pixQrCode}
+                    className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-xs text-white/70"
+                    rows={4}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCopy}
+                    className="w-full rounded-full border border-white/20 px-4 py-2 text-xs uppercase tracking-[0.3em] text-white/80"
+                  >
+                    {copied ? "Copiado!" : "Copiar código"}
+                  </button>
+                </div>
+              </div>
+            )}
           </section>
 
           <aside className="space-y-6">
@@ -82,23 +237,6 @@ export default function CheckoutPage({ searchParams }: CheckoutPageProps) {
                 Entrega via WhatsApp após confirmação do pagamento.
               </div>
             </div>
-            <div className="rounded-[32px] border border-white/10 bg-black/60 p-6">
-              <h4 className="text-xs uppercase tracking-[0.3em] text-white/50">
-                Outros mods
-              </h4>
-              <div className="mt-4 space-y-4">
-                {products.slice(0, 3).map((item) => (
-                  <Link
-                    key={item.slug}
-                    href={`/checkout?produto=${item.slug}`}
-                    className="flex items-center justify-between text-sm text-white/70"
-                  >
-                    <span>{item.name}</span>
-                    <span className="text-white/50">{formatPrice(item.price)}</span>
-                  </Link>
-                ))}
-              </div>
-            </div>
           </aside>
         </div>
       </main>
@@ -106,5 +244,3 @@ export default function CheckoutPage({ searchParams }: CheckoutPageProps) {
     </div>
   );
 }
-
-
