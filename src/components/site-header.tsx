@@ -3,6 +3,7 @@
 const navItems = [
   { label: "Início", href: "/" },
   { label: "Catálogo", href: "/catalogo" },
+  { label: "Carrinho", href: "/carrinho" },
   { label: "Admin", href: "/admin" },
 ];
 
