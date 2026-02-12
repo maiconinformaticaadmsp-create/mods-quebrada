@@ -10,19 +10,20 @@ const PODPAY_SECRET_KEY = process.env.PODPAY_SECRET_KEY || "";
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
-function isAdminAuthorized() {
+async function isAdminAuthorized() {
   const ADMIN_USER = process.env.ADMIN_USER || "";
   const ADMIN_PASS = process.env.ADMIN_PASS || "";
   const expected = crypto
     .createHash("sha256")
     .update(`${ADMIN_USER}:${ADMIN_PASS}`)
     .digest("hex");
-  const auth = cookies().get("admin_auth")?.value;
+  const cookieStore = await cookies();
+  const auth = cookieStore.get("admin_auth")?.value;
   return Boolean(auth && auth === expected);
 }
 
 export async function POST(request: Request) {
-  if (!isAdminAuthorized()) {
+  if (!(await isAdminAuthorized())) {
     return NextResponse.json({ success: false, error: "Não autorizado" }, { status: 401 });
   }
 
