@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { AddToCartButton } from "@/components/add-to-cart-button";
 import { formatPrice, getProductBySlug, products } from "@/lib/products";
 
 type ProductPageProps = {
@@ -88,7 +89,9 @@ export default function ProdutoPage({ params }: ProductPageProps) {
                 {product.badge}
               </span>
               <p className="mt-6 text-4xl font-semibold text-white">
-                {formatPrice(product.price)}
+                {product.customPrice
+                  ? "Você escolhe o valor"
+                  : formatPrice(product.price)}
               </p>
               <p className="mt-2 text-sm text-white/60">
                 Pagamento seguro via PIX.
@@ -103,6 +106,7 @@ export default function ProdutoPage({ params }: ProductPageProps) {
               >
                 Comprar agora
               </Link>
+              <AddToCartButton slug={product.slug} />
               <p className="mt-4 text-xs text-white/50">
                 Após o pagamento, enviamos instruções completas via WhatsApp.
               </p>

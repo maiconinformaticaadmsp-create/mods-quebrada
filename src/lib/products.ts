@@ -1,8 +1,9 @@
-﻿export type Product = {
+export type Product = {
   slug: string;
   name: string;
   category: "GTA V" | "FiveM" | "MTA" | "Assistência Técnica";
   price: number;
+  customPrice?: boolean;
   badge: string;
   short: string;
   description: string;
@@ -112,6 +113,27 @@ export const products: Product[] = [
     delivery: "Envio do link e suporte via WhatsApp após confirmação de pagamento.",
     highlight: "Libere tudo sem limites.",
     image: "/products/dinheiro-infinito-gtav.png",
+  },
+  {
+    slug: "servico-personalizado",
+    name: "Serviço Personalizado",
+    category: "Assistência Técnica",
+    price: 1,
+    customPrice: true,
+    badge: "Personalizado",
+    short: "Você escolhe o valor na hora do pagamento.",
+    description:
+      "Serviço personalizado para necessidade específica. Você define o valor antes de gerar o PIX.",
+    features: [
+      "Valor definido por você",
+      "Atendimento via WhatsApp",
+      "Serviço sob medida",
+      "Agendamento rápido",
+    ],
+    platforms: ["PC Gamer", "Notebook", "Windows"],
+    delivery: "Agendamento via WhatsApp após confirmação de pagamento.",
+    highlight: "Pagamento flexível para serviços sob medida.",
+    image: "/products/servico-personalizado.png",
   },
   {
     slug: "limpeza-hardware",

@@ -1,9 +1,20 @@
-﻿import Image from "next/image";
+"use client";
+
+import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import type { Product } from "@/lib/products";
 import { formatPrice } from "@/lib/products";
+import { addToCart, getCart } from "@/lib/cart";
 
 export function ProductCard({ product }: { product: Product }) {
+  const [inCart, setInCart] = useState(false);
+
+  useEffect(() => {
+    const current = getCart();
+    setInCart(current.some((item) => item.slug === product.slug));
+  }, [product.slug]);
+
   return (
     <div className="group overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-[0_0_40px_rgba(0,0,0,0.35)] transition hover:-translate-y-1 hover:border-white/30">
       <div className="relative h-44 overflow-hidden">
@@ -32,7 +43,7 @@ export function ProductCard({ product }: { product: Product }) {
         </div>
         <div className="flex items-center justify-between">
           <span className="text-lg font-semibold text-white">
-            {formatPrice(product.price)}
+            {product.customPrice ? "Você escolhe" : formatPrice(product.price)}
           </span>
           <Link
             href={`/produto/${product.slug}`}
@@ -48,12 +59,17 @@ export function ProductCard({ product }: { product: Product }) {
           >
             Comprar
           </Link>
-          <Link
-            href={`/produto/${product.slug}`}
-            className="flex-1 rounded-full border border-white/20 px-4 py-2 text-center text-xs uppercase tracking-[0.3em] text-white/80"
+          <button
+            type="button"
+            onClick={() => {
+              const next = addToCart(product.slug);
+              setInCart(next.some((item) => item.slug === product.slug));
+            }}
+            disabled={inCart}
+            className="flex-1 rounded-full border border-white/20 px-4 py-2 text-center text-xs uppercase tracking-[0.3em] text-white/80 transition hover:border-white/60 disabled:opacity-60"
           >
-            Detalhes
-          </Link>
+            {inCart ? "No carrinho" : "Adicionar"}
+          </button>
         </div>
       </div>
     </div>

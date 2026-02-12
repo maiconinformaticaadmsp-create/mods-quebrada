@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { cartToProducts, clearCart, getCart } from "@/lib/cart";
 import { formatPrice, products } from "@/lib/products";
 
 type PixResponse = {
@@ -22,22 +23,56 @@ type PixResponse = {
 export function CheckoutClient() {
   const searchParams = useSearchParams();
   const slug = searchParams.get("produto") || undefined;
+  const cartMode = searchParams.get("carrinho") === "1";
+  const [cartItems, setCartItems] = useState(getCart());
+
+  useEffect(() => {
+    if (cartMode) {
+      setCartItems(getCart());
+    }
+  }, [cartMode]);
+
+  const cartProducts = useMemo(
+    () => cartToProducts(cartItems, products),
+    [cartItems]
+  );
+
   const product = useMemo(
     () => products.find((item) => item.slug === slug),
     [slug]
   );
 
+  const selectedProducts = cartMode ? cartProducts : product ? [product] : [];
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [cpf, setCpf] = useState("");
   const [phone, setPhone] = useState("");
+  const [customAmount, setCustomAmount] = useState("");
   const [loading, setLoading] = useState(false);
   const [pix, setPix] = useState<PixResponse["data"] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [imgError, setImgError] = useState(false);
 
-  const priceInCents = product ? Math.round(product.price * 100) : 0;
+  const hasCustomPrice = selectedProducts.some((item) => item.customPrice);
+
+  const parseCurrency = (value: string) => {
+    const cleaned = value.replace(/[^\d,.]/g, "");
+    if (!cleaned) return 0;
+    const normalized = cleaned.replace(/\./g, "").replace(",", ".");
+    const parsed = Number.parseFloat(normalized);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  };
+
+  const customAmountValue = parseCurrency(customAmount);
+
+  const totalPrice = selectedProducts.reduce((sum, item) => {
+    if (item.customPrice) return sum + customAmountValue;
+    return sum + item.price;
+  }, 0);
+
+  const priceInCents = totalPrice ? Math.round(totalPrice * 100) : 0;
 
   const handleCopy = async () => {
     if (!pix?.pixQrCode) return;
@@ -50,8 +85,8 @@ export function CheckoutClient() {
     event.preventDefault();
     setError(null);
 
-    if (!product) {
-      setError("Selecione um produto antes de continuar.");
+    if (selectedProducts.length === 0) {
+      setError("Selecione pelo menos um produto antes de continuar.");
       return;
     }
 
@@ -73,6 +108,12 @@ export function CheckoutClient() {
       return;
     }
 
+    if (hasCustomPrice && customAmountValue < 1) {
+      setError("Informe um valor válido (mínimo R$ 1,00).");
+      setLoading(false);
+      return;
+    }
+
     const payload = {
       paymentMethod: "pix",
       amount: priceInCents,
@@ -82,14 +123,17 @@ export function CheckoutClient() {
         email,
         phone: phoneDigits,
       },
-      items: [
-        {
-          title: product.name,
-          unitPrice: priceInCents,
+      items: selectedProducts.map((item) => {
+        const unitPrice = item.customPrice
+          ? Math.round(customAmountValue * 100)
+          : Math.round(item.price * 100);
+        return {
+          title: item.name,
+          unitPrice,
           quantity: 1,
           tangible: false,
-        },
-      ],
+        };
+      }),
     };
 
     try {
@@ -111,6 +155,10 @@ export function CheckoutClient() {
 
       setPix(data.data);
       setImgError(false);
+      if (cartMode) {
+        clearCart();
+        setCartItems([]);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao gerar PIX");
     } finally {
@@ -180,6 +228,19 @@ export function CheckoutClient() {
                   className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white placeholder:text-white/40 focus:border-brand focus:outline-none"
                 />
               </label>
+              {hasCustomPrice && (
+                <label className="block text-sm text-white/70">
+                  Valor do serviço (R$)
+                  <input
+                    type="text"
+                    value={customAmount}
+                    onChange={(e) => setCustomAmount(e.target.value)}
+                    required
+                    placeholder="Ex: 10,00"
+                    className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white placeholder:text-white/40 focus:border-brand focus:outline-none"
+                  />
+                </label>
+              )}
 
               <button
                 type="submit"
@@ -252,7 +313,6 @@ export function CheckoutClient() {
                       : `data:image/png;base64,${cleaned}`;
 
                     return (
-                      // Usar img normal para evitar bloqueio do next/image
                       <img
                         src={src}
                         alt="QR Code PIX"
@@ -343,11 +403,27 @@ export function CheckoutClient() {
           <aside className="space-y-6">
             <div className="rounded-[32px] border border-white/10 bg-white/5 p-6">
               <h3 className="text-lg font-semibold text-white">Resumo do pedido</h3>
-              {product ? (
+              {selectedProducts.length > 0 ? (
                 <div className="mt-4 space-y-3 text-sm text-white/70">
-                  <p>{product.name}</p>
-                  <p className="text-white">{formatPrice(product.price)}</p>
-                  <p className="text-xs text-white/50">{product.category}</p>
+                  {selectedProducts.map((item) => (
+                    <div
+                      key={item.slug}
+                      className="flex items-center justify-between"
+                    >
+                      <span>{item.name}</span>
+                      <span className="text-white">
+                        {item.customPrice
+                          ? "Valor a definir"
+                          : formatPrice(item.price)}
+                      </span>
+                    </div>
+                  ))}
+                  <div className="mt-3 flex items-center justify-between text-sm text-white/80">
+                    <span>Total</span>
+                    <span className="text-white">
+                      {hasCustomPrice ? "Valor escolhido" : formatPrice(totalPrice)}
+                    </span>
+                  </div>
                 </div>
               ) : (
                 <div className="mt-4 space-y-3 text-sm text-white/70">
