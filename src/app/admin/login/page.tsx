@@ -7,7 +7,11 @@ export default function AdminLoginPage() {
           <p className="mt-2 text-sm text-white/60">
             Acesso restrito. Informe usuário e senha.
           </p>
-          <form action="/admin/login" method="post" className="mt-6 space-y-4">
+          <form
+            action="/admin/login/submit"
+            method="post"
+            className="mt-6 space-y-4"
+          >
             <label className="block text-sm text-white/70">
               Usuário
               <input
