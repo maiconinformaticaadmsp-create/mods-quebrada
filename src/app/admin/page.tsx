@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import crypto from "crypto";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { RefreshPaymentButton } from "@/components/refresh-payment-button";
 import { formatPrice, products } from "@/lib/products";
 
 type PaymentRow = {
@@ -181,6 +182,7 @@ export default async function AdminPage({
                   <th className="px-4 py-3">Cliente</th>
                   <th className="px-4 py-3">WhatsApp</th>
                   <th className="px-4 py-3">Data</th>
+                  <th className="px-4 py-3">Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -238,6 +240,9 @@ export default async function AdminPage({
                       </td>
                       <td className="px-4 py-4 text-xs text-white/60">
                         {new Date(payment.created_at).toLocaleString("pt-BR")}
+                      </td>
+                      <td className="px-4 py-4">
+                        <RefreshPaymentButton txId={payment.tx_id} />
                       </td>
                     </tr>
                   );
