@@ -1,0 +1,65 @@
+﻿@import "tailwindcss";
+
+:root {
+  --bg: #0a0d12;
+  --panel: #11151c;
+  --text: #e7edf4;
+  --muted: #9fb0c3;
+  --brand: #27f2b3;
+  --accent: #19c7ff;
+}
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --color-brand: var(--brand);
+  --color-muted: var(--muted);
+  --color-panel: var(--panel);
+  --font-sans: var(--font-text);
+  --font-mono: var(--font-mono);
+  --font-display: var(--font-display);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: linear-gradient(rgba(10, 13, 18, 0.82), rgba(10, 13, 18, 0.88)),
+    url("/background.png") center/cover fixed no-repeat,
+    radial-gradient(circle at top, rgba(39, 242, 179, 0.12), transparent 45%),
+    radial-gradient(circle at 20% 20%, rgba(25, 199, 255, 0.14), transparent 35%),
+    var(--bg);
+  color: var(--text);
+  font-family: var(--font-text), system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display), var(--font-text), system-ui, sans-serif;
+  letter-spacing: 0.02em;
+}
+
+::selection {
+  background: rgba(39, 242, 179, 0.4);
+  color: #04150e;
+}
+
+a {
+  text-decoration: none;
+}
+
+.text-gradient {
+  background: linear-gradient(120deg, #27f2b3, #19c7ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.bg-grid {
+  background-image: linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 120px 120px;
+}
