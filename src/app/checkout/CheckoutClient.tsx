@@ -204,10 +204,24 @@ export function CheckoutClient() {
                     const raw = pix.pixQrCodeImage || "";
                     const trimmed = raw.trim();
                     const cleaned = trimmed.replace(/\s/g, "");
-                    let format = "desconhecido";
+                    const fallback =
+                      pix.pixQrCode && pix.pixQrCode.length > 0
+                        ? `https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(
+                            pix.pixQrCode
+                          )}`
+                        : "";
+
+                    if (!trimmed) {
+                      return fallback ? (
+                        <img
+                          src={fallback}
+                          alt="QR Code PIX"
+                          className="h-full w-full object-contain"
+                        />
+                      ) : null;
+                    }
 
                     if (trimmed.startsWith("data:") || trimmed.startsWith("http")) {
-                      format = trimmed.startsWith("http") ? "url" : "data";
                       return (
                         <img
                           src={trimmed}
@@ -219,7 +233,6 @@ export function CheckoutClient() {
                     }
 
                     if (trimmed.startsWith("<svg")) {
-                      format = "svg";
                       const svgSrc = `data:image/svg+xml;utf8,${encodeURIComponent(
                         trimmed
                       )}`;
@@ -234,7 +247,6 @@ export function CheckoutClient() {
                     }
 
                     const isSvgBase64 = cleaned.startsWith("PHN2Zy");
-                    format = isSvgBase64 ? "svg-base64" : "png-base64";
                     const src = isSvgBase64
                       ? `data:image/svg+xml;base64,${cleaned}`
                       : `data:image/png;base64,${cleaned}`;
@@ -250,6 +262,22 @@ export function CheckoutClient() {
                     );
                   })()}
                 </div>
+                {imgError && pix.pixQrCode && (
+                  <div className="rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-3 text-xs text-yellow-100">
+                    QR original não carregou. Mostrando QR alternativo.
+                  </div>
+                )}
+                {imgError && pix.pixQrCode && (
+                  <div className="relative mx-auto h-56 w-56 overflow-hidden rounded-2xl bg-black/40">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(
+                        pix.pixQrCode
+                      )}`}
+                      alt="QR Code PIX"
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
+                )}
                 <div className="space-y-2">
                   <button
                     type="button"
@@ -271,6 +299,11 @@ export function CheckoutClient() {
                         } else {
                           src = `data:image/png;base64,${cleaned}`;
                         }
+                      }
+                      if (!src && pix.pixQrCode) {
+                        src = `https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(
+                          pix.pixQrCode
+                        )}`;
                       }
                       window.open(src, "_blank");
                     }}
