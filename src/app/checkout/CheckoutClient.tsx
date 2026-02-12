@@ -200,11 +200,37 @@ export function CheckoutClient() {
                 <div className="relative mx-auto h-56 w-56 overflow-hidden rounded-2xl bg-black/40">
                   {(() => {
                     const raw = pix.pixQrCodeImage || "";
-                    const cleaned = raw.replace(/\s/g, "");
-                    const src =
-                      cleaned.startsWith("data:") || cleaned.startsWith("http")
-                        ? cleaned
-                        : `data:image/png;base64,${cleaned}`;
+                    const trimmed = raw.trim();
+                    const cleaned = trimmed.replace(/\s/g, "");
+
+                    if (trimmed.startsWith("data:") || trimmed.startsWith("http")) {
+                      return (
+                        <img
+                          src={trimmed}
+                          alt="QR Code PIX"
+                          className="h-full w-full object-contain"
+                        />
+                      );
+                    }
+
+                    if (trimmed.startsWith("<svg")) {
+                      const svgSrc = `data:image/svg+xml;utf8,${encodeURIComponent(
+                        trimmed
+                      )}`;
+                      return (
+                        <img
+                          src={svgSrc}
+                          alt="QR Code PIX"
+                          className="h-full w-full object-contain"
+                        />
+                      );
+                    }
+
+                    const isSvgBase64 = cleaned.startsWith("PHN2Zy");
+                    const src = isSvgBase64
+                      ? `data:image/svg+xml;base64,${cleaned}`
+                      : `data:image/png;base64,${cleaned}`;
+
                     return (
                       // Usar img normal para evitar bloqueio do next/image
                       <img
