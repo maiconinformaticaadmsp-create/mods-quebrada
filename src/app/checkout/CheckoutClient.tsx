@@ -57,14 +57,29 @@ export function CheckoutClient() {
     setLoading(true);
     setPix(null);
 
+    const cpfDigits = cpf.replace(/\D/g, "");
+    const phoneDigits = phone.replace(/\D/g, "");
+
+    if (cpfDigits.length !== 11) {
+      setError("CPF inválido. Informe 11 dígitos.");
+      setLoading(false);
+      return;
+    }
+
+    if (phoneDigits.length < 10 || phoneDigits.length > 11) {
+      setError("WhatsApp inválido. Use DDD + número (10 ou 11 dígitos).");
+      setLoading(false);
+      return;
+    }
+
     const payload = {
       paymentMethod: "pix",
       amount: priceInCents,
       customer: {
-        document: { type: "cpf", number: cpf.replace(/\D/g, "") },
+        document: { type: "cpf", number: cpfDigits },
         name,
         email,
-        phone: phone.replace(/\D/g, ""),
+        phone: phoneDigits,
       },
       items: [
         {
