@@ -191,13 +191,23 @@ export default async function AdminPage({
                     </td>
                   </tr>
                 ) : (
-                  payments.map((payment) => (
+                  payments.map((payment) => {
+                    const status = (payment.status || "desconhecido").toLowerCase();
+                    const statusClass =
+                      status === "paid"
+                        ? "border-green-400/40 bg-green-400/10 text-green-300"
+                        : status === "pending"
+                        ? "border-orange-400/40 bg-orange-400/10 text-orange-300"
+                        : "border-white/20 bg-white/10 text-white/70";
+                    return (
                     <tr key={payment.id} className="border-t border-white/10">
                       <td className="px-4 py-4 text-xs text-white/70">
                         {payment.tx_id}
                       </td>
                       <td className="px-4 py-4">
-                        <span className="rounded-full border border-brand/40 bg-brand/10 px-3 py-1 text-xs text-brand">
+                        <span
+                          className={`rounded-full border px-3 py-1 text-xs ${statusClass}`}
+                        >
                           {payment.status || "desconhecido"}
                         </span>
                       </td>
@@ -230,7 +240,8 @@ export default async function AdminPage({
                         {new Date(payment.created_at).toLocaleString("pt-BR")}
                       </td>
                     </tr>
-                  ))
+                  );
+                  })
                 )}
               </tbody>
             </table>
