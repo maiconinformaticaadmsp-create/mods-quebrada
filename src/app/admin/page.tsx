@@ -90,7 +90,8 @@ export default async function AdminPage({
     .createHash("sha256")
     .update(`${ADMIN_USER}:${ADMIN_PASS}`)
     .digest("hex");
-  const auth = cookies().get("admin_auth")?.value;
+  const cookieStore = await cookies();
+  const auth = cookieStore.get("admin_auth")?.value;
 
   if (!auth || auth !== expected) {
     redirect("/admin/login");
