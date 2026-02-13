@@ -60,6 +60,7 @@ async function getMonthlyTotal(): Promise<number> {
 
   const params = new URLSearchParams({
     select: "amount",
+    status: "eq.paid",
     created_at: `gte.${start.toISOString()}`,
   });
   params.append("created_at", `lt.${end.toISOString()}`);
