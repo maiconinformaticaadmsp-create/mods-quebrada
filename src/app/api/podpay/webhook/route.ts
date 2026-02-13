@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 
+const PODPAY_BASE_URL =
+  process.env.PODPAY_BASE_URL ||
+  process.env.URL_BASE_PODPAY ||
+  "https://api.podpay.app";
 const WEBHOOK_SECRET = process.env.PODPAY_WEBHOOK_SECRET || "";
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
