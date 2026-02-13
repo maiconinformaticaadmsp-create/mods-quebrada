@@ -15,6 +15,16 @@ type PaymentInsert = {
   raw: unknown;
 };
 
+function compactPayment(data: PaymentInsert) {
+  const cleaned: Record<string, unknown> = { tx_id: data.tx_id, raw: data.raw };
+  if (data.status) cleaned.status = data.status;
+  if (typeof data.amount === "number") cleaned.amount = data.amount;
+  if (data.customer_name) cleaned.customer_name = data.customer_name;
+  if (data.customer_email) cleaned.customer_email = data.customer_email;
+  if (data.customer_phone) cleaned.customer_phone = data.customer_phone;
+  return cleaned;
+}
+
 async function savePayment(data: PaymentInsert) {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     return { error: "Supabase nao configurado" };
@@ -28,7 +38,7 @@ async function savePayment(data: PaymentInsert) {
       "Content-Type": "application/json",
       Prefer: "resolution=merge-duplicates",
     },
-    body: JSON.stringify(data),
+    body: JSON.stringify(compactPayment(data)),
   });
 
   if (!response.ok) {
@@ -78,10 +88,38 @@ export async function POST(request: Request) {
     "";
 
   if (txId) {
-    const status = data?.status || payload?.status || payload?.event || null;
-    const amount =
+    let status = data?.status || payload?.status || payload?.event || null;
+    let amount =
       typeof data?.amount === "number" ? data.amount : payload?.amount ?? null;
-    const customer = data?.customer || payload?.customer || {};
+    let customer = data?.customer || payload?.customer || {};
+
+    // Se o webhook não traz cliente, consulta a transação completa na PodPay
+    if (
+      (!customer?.name && !customer?.email && !customer?.phone) ||
+      amount === null ||
+      !status
+    ) {
+      try {
+        const detail = await fetch(`${PODPAY_BASE_URL}/v1/transactions/${txId}`, {
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": PODPAY_SECRET_KEY,
+          },
+        }).then((res) => res.json());
+
+        const detailData = detail?.data || detail;
+        status = status || detailData?.status || null;
+        amount =
+          typeof amount === "number"
+            ? amount
+            : typeof detailData?.amount === "number"
+            ? detailData.amount
+            : null;
+        customer = detailData?.customer || customer;
+      } catch {
+        // ignora falha de consulta
+      }
+    }
 
     await savePayment({
       tx_id: String(txId),
