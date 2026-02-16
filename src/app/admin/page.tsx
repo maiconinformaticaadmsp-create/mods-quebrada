@@ -240,7 +240,9 @@ export default async function AdminPage({
                         )}
                       </td>
                       <td className="px-4 py-4 text-xs text-white/60">
-                        {new Date(payment.created_at).toLocaleString("pt-BR")}
+                        {new Date(payment.created_at).toLocaleString("pt-BR", {
+                          timeZone: "America/Sao_Paulo",
+                        })}
                       </td>
                       <td className="px-4 py-4">
                         <RefreshPaymentButton txId={payment.tx_id} />
